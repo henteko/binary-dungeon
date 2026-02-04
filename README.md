@@ -13,7 +13,7 @@ Built for short play sessions in the terminal.
                            |___/                    |___/
 ```
 
-<script src="https://asciinema.org/a/oTczopsD4Exje4pL.js" id="asciicast-oTczopsD4Exje4pL" async="true"></script>
+![demo](assets/demo.gif)
 
 ## Install
 
