@@ -1,5 +1,6 @@
 import type { ActionType, GameState, Enemy } from "../game/types.ts";
 import { addLog } from "../game/GameState.ts";
+import { ITEM_NAMES } from "../game/constants.ts";
 import { isAdjacent } from "../entity/Entity.ts";
 import { healMh } from "../entity/Player.ts";
 import {
@@ -33,12 +34,36 @@ function findNearestEnemy(state: GameState): Enemy | null {
   return nearest;
 }
 
+function getAttackBuffMultiplier(state: GameState): number {
+  let multiplier = 1.0;
+  for (const buff of state.activeBuffs) {
+    if (buff.type === "attackUp") {
+      multiplier *= buff.multiplier;
+    }
+  }
+  return multiplier;
+}
+
+function consumeSudo(state: GameState): number {
+  const sudoBuff = state.activeBuffs.find((b) => b.type === "sudo");
+  if (!sudoBuff) return 1.0;
+  const mult = sudoBuff.multiplier;
+  state.activeBuffs = state.activeBuffs.filter((b) => b !== sudoBuff);
+  const name = ITEM_NAMES[sudoBuff.source] ?? "sudo";
+  addLog(state, `${name} activated! x${mult} damage!`);
+  return mult;
+}
+
 function damageEnemy(state: GameState, enemy: Enemy, damage: number): void {
-  enemy.hp = Math.max(0, enemy.hp - damage);
-  addLog(state, `Hit ${enemy.variant} for ${damage} damage!`);
+  const attackBuff = getAttackBuffMultiplier(state);
+  const sudoMult = consumeSudo(state);
+  const finalDamage = Math.floor(damage * attackBuff * sudoMult);
+
+  enemy.hp = Math.max(0, enemy.hp - finalDamage);
+  addLog(state, `Hit ${enemy.variant} for ${finalDamage} damage!`);
 
   const killed = enemy.hp <= 0;
-  state.turnEvents.push({ kind: "damage_dealt", target: enemy.variant, amount: damage, killed });
+  state.turnEvents.push({ kind: "damage_dealt", target: enemy.variant, amount: finalDamage, killed });
 
   if (killed) {
     addLog(state, `${enemy.variant} destroyed! +${enemy.xpReward} XP`);

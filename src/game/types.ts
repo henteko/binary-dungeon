@@ -5,6 +5,24 @@ export type Position = {
 
 export type TileType = "floor" | "wall" | "stairs" | "void";
 
+export type ItemVariant = "coffee" | "pizza" | "red_bull" | "mech_keyboard" | "nc_headphones" | "sudo";
+
+export type Item = {
+  id: string;
+  variant: ItemVariant;
+  position: Position;
+  pickedUp: boolean;
+};
+
+export type BuffType = "attackUp" | "defenseUp" | "sudo";
+
+export type ActiveBuff = {
+  type: BuffType;
+  source: ItemVariant;
+  turnsRemaining: number;
+  multiplier: number;
+};
+
 export type Visibility = "visible" | "explored" | "hidden";
 
 export type TileState = {
@@ -78,7 +96,9 @@ export type TurnEvent =
   | { kind: "move"; direction: string }
   | { kind: "wait" }
   | { kind: "stunned" }
-  | { kind: "burnout_tick"; amount: number };
+  | { kind: "burnout_tick"; amount: number }
+  | { kind: "item_pickup"; item: ItemVariant; effect: string }
+  | { kind: "buff_expired"; buff: BuffType; source: ItemVariant; crash?: number };
 
 export type GameState = {
   phase: GamePhase;
@@ -94,4 +114,6 @@ export type GameState = {
   title: string;
   scriptKiddie: boolean;
   turnEvents: TurnEvent[];
+  items: Item[];
+  activeBuffs: ActiveBuff[];
 };

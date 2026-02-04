@@ -5,6 +5,8 @@ import { generateDungeon } from "../dungeon/DungeonGenerator.ts";
 import { resolveAction } from "../combat/ActionResolver.ts";
 import { processEnemyTurns } from "../combat/EnemyAI.ts";
 import { createEnemy, randomEnemyVariant } from "../entity/Enemy.ts";
+import { createItem, randomItemVariant } from "../entity/Item.ts";
+import { healMh } from "../entity/Player.ts";
 import { canUpgrade, upgradeStack, getUpgradeCost } from "../progression/TechStack.ts";
 import { getAvailableXp, updateTitle } from "../progression/XPManager.ts";
 import {
@@ -12,7 +14,11 @@ import {
   BURNOUT_DAMAGE_PER_TURN,
   INITIAL_DL,
   MILESTONES,
+  ITEM_SPAWN_COUNTS,
+  ITEM_EFFECTS,
+  ITEM_NAMES,
 } from "./constants.ts";
+import type { ActiveBuff } from "./types.ts";
 
 export type GameEvent =
   | { type: "move"; direction: Position }
@@ -34,6 +40,7 @@ export function processTurn(state: GameState, event: GameEvent): void {
       state.phase = "exploring";
       addLog(state, "Starting Milestone " + state.milestone.version + "...");
       spawnEnemies(state);
+      spawnItems(state);
       computeFOV(state.dungeon, state.player.position);
     }
     return;
@@ -116,6 +123,9 @@ function handleMove(state: GameState, direction: Position): boolean {
   state.player.position.x = newX;
   state.player.position.y = newY;
 
+  // Check for item pickup
+  pickupItem(state);
+
   const dirLabel =
     direction.x > 0 ? "east" :
     direction.x < 0 ? "west" :
@@ -183,8 +193,9 @@ function handleMilestoneClear(state: GameState): void {
   state.player.dl = Math.min(state.player.maxDl, state.player.dl + INITIAL_DL + dlBonus);
   state.burnoutMode = false;
 
-  // Spawn enemies for new floor
+  // Spawn enemies and items for new floor
   spawnEnemies(state);
+  spawnItems(state);
 
   addLog(state, `Deadline extended! DL restored.`);
   computeFOV(state.dungeon, state.player.position);
@@ -208,6 +219,9 @@ function endOfTurn(state: GameState): void {
     state.turnEvents.push({ kind: "burnout_tick", amount: BURNOUT_DAMAGE_PER_TURN });
     addLog(state, `Burnout! You take ${BURNOUT_DAMAGE_PER_TURN} stress damage.`);
   }
+
+  // Tick buffs
+  tickBuffs(state);
 
   // Reset defending (but keep for this turn's enemy attacks)
   // Defending resets at start of next player turn, not here
@@ -273,5 +287,119 @@ function handleNewGame(state: GameState): void {
   state.log = ["New run started! Good luck, developer."];
 
   spawnEnemies(state);
+  spawnItems(state);
   computeFOV(state.dungeon, state.player.position);
+}
+
+function spawnItems(state: GameState): void {
+  const floorIdx = state.milestone.floor - 1;
+  const count = ITEM_SPAWN_COUNTS[floorIdx] ?? 2;
+
+  state.items = [];
+
+  // Get floor tiles that aren't player, enemy, or stairs positions
+  const floorTiles: Position[] = [];
+  for (let y = 0; y < state.dungeon.height; y++) {
+    for (let x = 0; x < state.dungeon.width; x++) {
+      const tile = state.dungeon.tiles[y]?.[x];
+      if (!tile || tile.type !== "floor") continue;
+      if (state.player.position.x === x && state.player.position.y === y) continue;
+      if (state.enemies.some((e) => e.position.x === x && e.position.y === y)) continue;
+      floorTiles.push({ x, y });
+    }
+  }
+
+  // Shuffle
+  for (let i = floorTiles.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [floorTiles[i], floorTiles[j]] = [floorTiles[j]!, floorTiles[i]!];
+  }
+
+  for (let i = 0; i < Math.min(count, floorTiles.length); i++) {
+    const pos = floorTiles[i]!;
+    const variant = randomItemVariant();
+    state.items.push(createItem(variant, pos));
+  }
+}
+
+function pickupItem(state: GameState): void {
+  const { x, y } = state.player.position;
+  const item = state.items.find(
+    (i) => !i.pickedUp && i.position.x === x && i.position.y === y
+  );
+  if (!item) return;
+
+  item.pickedUp = true;
+  const effect = ITEM_EFFECTS[item.variant];
+  const name = ITEM_NAMES[item.variant] ?? item.variant;
+  if (!effect) return;
+
+  const effectParts: string[] = [];
+
+  // Apply heal
+  if (effect.heal) {
+    const healed = healMh(state.player, effect.heal);
+    effectParts.push(`+${healed} MH`);
+  }
+
+  // Apply buff
+  if (effect.buffType && effect.duration && effect.multiplier) {
+    if (effect.buffType === "sudo") {
+      // sudo: remove existing sudo buff and add fresh
+      state.activeBuffs = state.activeBuffs.filter((b) => b.type !== "sudo");
+      state.activeBuffs.push({
+        type: "sudo",
+        source: item.variant,
+        turnsRemaining: effect.duration,
+        multiplier: effect.multiplier,
+      });
+      effectParts.push("Next attack x3!");
+    } else {
+      state.activeBuffs.push({
+        type: effect.buffType,
+        source: item.variant,
+        turnsRemaining: effect.duration,
+        multiplier: effect.multiplier,
+      });
+      if (effect.buffType === "attackUp") {
+        effectParts.push(`ATK x${effect.multiplier} (${effect.duration}T)`);
+      } else if (effect.buffType === "defenseUp") {
+        effectParts.push(`DEF x${effect.multiplier} (${effect.duration}T)`);
+      }
+    }
+  }
+
+  const effectStr = effectParts.join(", ");
+  state.turnEvents.push({ kind: "item_pickup", item: item.variant, effect: effectStr });
+  addLog(state, `Picked up ${name}! ${effectStr}`);
+}
+
+function tickBuffs(state: GameState): void {
+  const expired: ActiveBuff[] = [];
+
+  for (const buff of state.activeBuffs) {
+    // sudo doesn't tick down by turns
+    if (buff.type === "sudo") continue;
+
+    buff.turnsRemaining--;
+    if (buff.turnsRemaining <= 0) {
+      expired.push(buff);
+    }
+  }
+
+  for (const buff of expired) {
+    state.activeBuffs = state.activeBuffs.filter((b) => b !== buff);
+    const name = ITEM_NAMES[buff.source] ?? buff.source;
+
+    // Red Bull crash
+    if (buff.source === "red_bull") {
+      const crashDmg = ITEM_EFFECTS["red_bull"]?.crashDamage ?? 10;
+      state.player.mh = Math.max(0, state.player.mh - crashDmg);
+      state.turnEvents.push({ kind: "buff_expired", buff: buff.type, source: buff.source, crash: crashDmg });
+      addLog(state, `${name} crash! -${crashDmg} MH`);
+    } else {
+      state.turnEvents.push({ kind: "buff_expired", buff: buff.type, source: buff.source });
+      addLog(state, `${name} effect wore off.`);
+    }
+  }
 }

@@ -23,6 +23,8 @@ export function createInitialGameState(): GameState {
     title: "Junior",
     scriptKiddie: false,
     turnEvents: [],
+    items: [],
+    activeBuffs: [],
   };
 }
 

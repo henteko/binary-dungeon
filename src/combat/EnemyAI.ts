@@ -4,6 +4,16 @@ import { isAdjacent } from "../entity/Entity.ts";
 import { damageMh } from "../entity/Player.ts";
 import { getEnemyAttackDamage } from "../entity/Enemy.ts";
 
+function getDefenseBuffMultiplier(state: GameState): number {
+  let multiplier = 1.0;
+  for (const buff of state.activeBuffs) {
+    if (buff.type === "defenseUp") {
+      multiplier *= buff.multiplier;
+    }
+  }
+  return multiplier;
+}
+
 function canMoveTo(state: GameState, x: number, y: number, excludeEnemyId: string): boolean {
   if (x < 0 || x >= state.dungeon.width || y < 0 || y >= state.dungeon.height) return false;
   const tile = state.dungeon.tiles[y]?.[x];
@@ -56,7 +66,10 @@ export function processEnemyTurns(state: GameState): void {
     if (isAdjacent(enemy.position, state.player.position)) {
       // Attack player
       const damage = getEnemyAttackDamage(enemy, state.burnoutMode);
-      const dealt = damageMh(state.player, damage);
+      // Apply defense buff (independent from Refactor's defenseMultiplier)
+      const defenseBuffMult = getDefenseBuffMultiplier(state);
+      const buffedDamage = Math.floor(damage * defenseBuffMult);
+      const dealt = damageMh(state.player, buffedDamage);
       state.turnEvents.push({ kind: "damage_taken", source: enemy.variant, amount: dealt });
       addLog(state, `${enemy.variant} attacks! -${dealt} MH`);
     } else {

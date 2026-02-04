@@ -6,7 +6,7 @@ import {
 } from "@opentui/core";
 import type { GameState, Enemy } from "../../game/types.ts";
 import { getTileChar, getTileColor, PLAYER_CHAR } from "../../dungeon/Tile.ts";
-import { COLORS } from "../../game/constants.ts";
+import { COLORS, ITEM_CHARS, ITEM_COLORS } from "../../game/constants.ts";
 
 const ENEMY_CHARS: Record<string, string> = {
   Segfault: "S",
@@ -59,6 +59,24 @@ export class DungeonView {
           buffer.setCell(x, y, char, fg, RGBA.fromHex(COLORS.background), TextAttributes.NONE);
         }
       }
+    }
+
+    // Draw items (only if visible and not picked up)
+    for (const item of state.items) {
+      if (item.pickedUp) continue;
+      const tile = dungeon.tiles[item.position.y]?.[item.position.x];
+      if (!tile || tile.visibility !== "visible") continue;
+
+      const char = ITEM_CHARS[item.variant] ?? "?";
+      const color = ITEM_COLORS[item.variant] ?? "#FFFFFF";
+      buffer.setCell(
+        item.position.x,
+        item.position.y,
+        char,
+        RGBA.fromHex(color),
+        RGBA.fromHex(COLORS.background),
+        TextAttributes.BOLD
+      );
     }
 
     // Draw enemies (only if visible)

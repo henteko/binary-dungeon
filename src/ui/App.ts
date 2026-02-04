@@ -8,7 +8,7 @@ import {
 import type { GameState } from "../game/types.ts";
 import { createInitialGameState, addLog } from "../game/GameState.ts";
 import { processTurn, type GameEvent } from "../game/GameLoop.ts";
-import { COLORS, GAME_TITLE, DUNGEON_WIDTH, DUNGEON_HEIGHT } from "../game/constants.ts";
+import { COLORS, GAME_TITLE, DUNGEON_WIDTH, DUNGEON_HEIGHT, ITEM_NAMES } from "../game/constants.ts";
 import { InputHandler } from "./InputHandler.ts";
 import { DungeonView } from "./components/DungeonView.ts";
 import { getAvailableXp } from "../progression/XPManager.ts";
@@ -42,6 +42,7 @@ export class App {
   private turnText!: TextRenderable;
   private techStackText!: TextRenderable;
   private lastActionText!: TextRenderable;
+  private buffText!: TextRenderable;
   private dungeonPanel!: BoxRenderable;
   private titleOverlay!: TextRenderable;
 
@@ -194,6 +195,19 @@ export class App {
       fg: COLORS.textPrimary,
     });
 
+    const buffsLabel = new TextRenderable(this.renderer, {
+      id: "buffs-label",
+      content: "[ BUFFS ]",
+      fg: COLORS.textSecondary,
+      attributes: TextAttributes.BOLD,
+    });
+
+    this.buffText = new TextRenderable(this.renderer, {
+      id: "buff-text",
+      content: "(none)",
+      fg: COLORS.textMuted,
+    });
+
     const lastActionLabel = new TextRenderable(this.renderer, {
       id: "lastaction-label",
       content: "[ LAST ACTION ]",
@@ -221,6 +235,8 @@ export class App {
     statusPanel.add(this.techStackText);
     statusPanel.add(actionsLabel);
     statusPanel.add(actionsText);
+    statusPanel.add(buffsLabel);
+    statusPanel.add(this.buffText);
     statusPanel.add(lastActionLabel);
     statusPanel.add(this.lastActionText);
     statusPanel.add(this.turnText);
@@ -355,6 +371,21 @@ export class App {
     // Tech stacks
     const ts = this.state.techStacks;
     this.techStackText.content = `Py:${ts.python} C++:${ts.cpp} Rs:${ts.rust} Go:${ts.go}`;
+
+    // Buffs display
+    if (this.state.activeBuffs.length > 0) {
+      const buffLines = this.state.activeBuffs.map((b) => {
+        const name = ITEM_NAMES[b.source] ?? b.source;
+        if (b.type === "sudo") return `${name} (next atk)`;
+        const label = b.type === "attackUp" ? "ATK" : "DEF";
+        return `${name} ${label}x${b.multiplier} ${b.turnsRemaining}T`;
+      });
+      this.buffText.content = buffLines.join("\n");
+      this.buffText.fg = COLORS.textPrimary;
+    } else {
+      this.buffText.content = "(none)";
+      this.buffText.fg = COLORS.textMuted;
+    }
 
     // Last action (turn events)
     this.lastActionText.content = formatTurnEventsForUI(this.state);
@@ -492,6 +523,17 @@ function formatTurnEventsForUI(state: GameState): string {
         break;
       case "burnout_tick":
         lines.push(`  BURNOUT -${ev.amount} MH`);
+        break;
+      case "item_pickup":
+        lines.push(`> Picked up ${ITEM_NAMES[ev.item] ?? ev.item}`);
+        if (ev.effect) lines.push(`  ${ev.effect}`);
+        break;
+      case "buff_expired":
+        if (ev.crash) {
+          lines.push(`  ${ITEM_NAMES[ev.source] ?? ev.source} crash! -${ev.crash} MH`);
+        } else {
+          lines.push(`  ${ITEM_NAMES[ev.source] ?? ev.source} wore off`);
+        }
         break;
     }
   }

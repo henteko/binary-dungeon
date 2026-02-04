@@ -63,6 +63,53 @@ export const MAX_STACK_LEVEL = 10;
 export const TITLES = ["Junior", "Mid-level", "Senior", "Lead", "Architect"] as const;
 export type Title = (typeof TITLES)[number];
 
+export const ITEM_CHARS: Record<string, string> = {
+  coffee: "c",
+  pizza: "p",
+  red_bull: "r",
+  mech_keyboard: "K",
+  nc_headphones: "H",
+  sudo: "$",
+};
+
+export const ITEM_COLORS: Record<string, string> = {
+  coffee: "#8B4513",
+  pizza: "#FFA500",
+  red_bull: "#00BFFF",
+  mech_keyboard: "#FF69B4",
+  nc_headphones: "#9370DB",
+  sudo: "#00FF00",
+};
+
+export const ITEM_NAMES: Record<string, string> = {
+  coffee: "Coffee",
+  pizza: "Pizza",
+  red_bull: "Red Bull",
+  mech_keyboard: "Mech Keyboard",
+  nc_headphones: "NC Headphones",
+  sudo: "sudo",
+};
+
+export const ITEM_EFFECTS: Record<string, { type: "heal" | "heal_and_buff" | "buff" | "sudo"; heal?: number; buffType?: "attackUp" | "defenseUp" | "sudo"; duration?: number; multiplier?: number; crashDamage?: number }> = {
+  coffee: { type: "heal", heal: 15 },
+  pizza: { type: "heal", heal: 35 },
+  red_bull: { type: "heal_and_buff", heal: 20, buffType: "attackUp", duration: 5, multiplier: 1.5, crashDamage: 10 },
+  mech_keyboard: { type: "buff", buffType: "attackUp", duration: 6, multiplier: 1.4 },
+  nc_headphones: { type: "buff", buffType: "defenseUp", duration: 6, multiplier: 0.4 },
+  sudo: { type: "sudo", buffType: "sudo", duration: 999, multiplier: 3.0 },
+};
+
+export const ITEM_SPAWN_COUNTS = [2, 2, 3, 3, 4, 4, 5];
+
+export const ITEM_WEIGHTS: Record<string, number> = {
+  coffee: 30,
+  pizza: 15,
+  red_bull: 10,
+  mech_keyboard: 15,
+  nc_headphones: 15,
+  sudo: 5,
+};
+
 export const PLAYER_CHAR = "@";
 export const WALL_CHAR = "#";
 export const FLOOR_CHAR = ".";
