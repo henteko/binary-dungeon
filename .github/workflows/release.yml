@@ -13,7 +13,7 @@ jobs:
           - name: darwin-arm64
             runner: macos-14
           - name: darwin-x64
-            runner: macos-13
+            runner: macos-15-large
           - name: linux-x64
             runner: ubuntu-latest
           - name: linux-arm64
