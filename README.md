@@ -13,7 +13,23 @@ Built for short play sessions in the terminal.
                            |___/                    |___/
 ```
 
-## Setup
+## Install
+
+Download a prebuilt binary for your platform from [Releases](https://github.com/henteko/binary-dungeon/releases).
+
+| File | Platform |
+|------|----------|
+| `bd-darwin-arm64` | macOS (Apple Silicon) |
+| `bd-darwin-x64` | macOS (Intel) |
+| `bd-linux-x64` | Linux (x86_64) |
+| `bd-linux-arm64` | Linux (ARM64) |
+
+```bash
+chmod +x bd-darwin-arm64
+./bd-darwin-arm64
+```
+
+### From source
 
 Requires [Bun](https://bun.sh/).
 
@@ -67,6 +83,21 @@ You are a developer (`@`) navigating a dungeon of bugs. Each floor has a set of 
 
 Enemies chase you within range 10 and attack when adjacent.
 
+### Items
+
+Items spawn on each floor. Walk over them to pick up instantly.
+
+| Item | Symbol | Effect |
+|------|--------|--------|
+| Coffee | `c` | Restore 15 MH |
+| Pizza | `p` | Restore 35 MH |
+| Red Bull | `r` | Restore 20 MH + 1.5x attack for 5 turns (crash: -10 MH when expired) |
+| Mech Keyboard | `K` | 1.4x attack for 6 turns |
+| NC Headphones | `H` | 0.4x incoming damage for 6 turns |
+| sudo | `$` | Next attack deals 3x damage |
+
+Multiple attack buffs stack multiplicatively.
+
 ### Milestones
 
 Clear floors to advance through milestones (v1.0.0 -> v1.1.0 -> ... -> v3.0.0). Each milestone increases enemy count, HP, and attack power. Clearing a milestone restores your Deadline.
@@ -86,7 +117,7 @@ Each stack has a max level of 10. As your total stack levels increase, your titl
 
 ## Save Data
 
-Game progress is saved to `~/.binary-dungeon/save.yaml` with HMAC-SHA256 signature verification. Editing the save file is detected and permanently sets your title to "Script Kiddie".
+Supports 3 save slots. Data is saved to `~/.binary-dungeon/slot{1,2,3}.yaml` with HMAC-SHA256 tamper detection. Editing the save file is detected and permanently sets your title to "Script Kiddie".
 
 ## Recording
 
@@ -118,37 +149,3 @@ bun run start     # Run built output
 - BSP dungeon generation
 - Shadowcasting FOV
 
-## Project Structure
-
-```
-src/
-  index.ts              Entry point
-  game/
-    types.ts            Core type definitions
-    constants.ts        Balance parameters
-    GameState.ts        State initialization
-    GameLoop.ts         Turn processing pipeline
-  dungeon/
-    DungeonGenerator.ts BSP map generation
-    Tile.ts             Tile definitions
-    FOV.ts              Shadowcasting visibility
-  entity/
-    Entity.ts           Shared entity utilities
-    Player.ts           Player state helpers
-    Enemy.ts            Enemy definitions and AI stats
-  combat/
-    ActionDefinitions.ts  Action cost/power calculations
-    ActionResolver.ts     Action execution logic
-    EnemyAI.ts            Enemy behavior (chase/attack)
-  progression/
-    TechStack.ts        Tech stack upgrade system
-    XPManager.ts        XP tracking and titles
-  save/
-    SaveManager.ts      YAML save/load
-    SignatureManager.ts  HMAC-SHA256 tamper detection
-  ui/
-    App.ts              Main application and UI layout
-    InputHandler.ts     Key -> GameEvent mapping
-    components/
-      DungeonView.ts    FrameBuffer map renderer
-```
