@@ -14,15 +14,12 @@ import { DungeonView } from "./components/DungeonView.ts";
 import { getAvailableXp } from "../progression/XPManager.ts";
 import { TECH_STACK_INFO, getUpgradeCost } from "../progression/TechStack.ts";
 import { saveGame, loadGame, applySaveData } from "../save/SaveManager.ts";
-import { ReplayRecorder } from "../replay/ReplayManager.ts";
-import { renderSnapshot } from "../replay/SnapshotRenderer.ts";
 
 export class App {
   private renderer: CliRenderer;
   private state: GameState;
   private inputHandler: InputHandler;
   private dungeonView: DungeonView;
-  private recorder: ReplayRecorder | null = null;
 
   // UI elements
   private titleText!: TextRenderable;
@@ -276,38 +273,13 @@ export class App {
     processTurn(this.state, event);
     this.inputHandler.setGamePhase(this.state.phase);
 
-    // 録画開始: タイトル→探索に遷移した時
-    if (this.state.phase === "exploring" && prevPhase === "title") {
-      this.recorder = new ReplayRecorder(
-        this.renderer.terminalWidth,
-        this.renderer.terminalHeight,
-      );
-    }
-
-    // 毎ターン記録
-    if (this.recorder && (this.state.phase === "exploring" || this.state.phase === "game_over")) {
-      this.recorder.recordFrame(renderSnapshot(this.state));
-    }
-
-    // ゲームオーバー時: セーブ＆リプレイファイルパス表示
+    // ゲームオーバー時: セーブ
     if (this.state.phase === "game_over" && prevPhase !== "game_over") {
       saveGame(this.state);
-      if (this.recorder) {
-        addLog(this.state, `Replay saved: ${this.recorder.getFilePath()}`);
-        this.recorder = null;
-      }
     }
 
     if (event.type === "invest_xp" || event.type === "finish_invest") {
       saveGame(this.state);
-    }
-
-    // 新規ゲーム開始時に新しい録画を開始
-    if (event.type === "finish_invest") {
-      this.recorder = new ReplayRecorder(
-        this.renderer.terminalWidth,
-        this.renderer.terminalHeight,
-      );
     }
 
     this.updateUI();
