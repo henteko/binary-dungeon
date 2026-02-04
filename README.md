@@ -17,28 +17,14 @@ Built for short play sessions in the terminal.
 
 ## Install
 
-Download a prebuilt binary for your platform from [Releases](https://github.com/henteko/binary-dungeon/releases).
-
-| File | Platform |
-|------|----------|
-| `bd-darwin-arm64` | macOS (Apple Silicon) |
-| `bd-darwin-x64` | macOS (Intel) |
-| `bd-linux-x64` | Linux (x86_64) |
-| `bd-linux-arm64` | Linux (ARM64) |
-
-```bash
-chmod +x bd-darwin-arm64
-mv bd-darwin-arm64 bd
-./bd
-```
-
-### From source
-
 Requires [Bun](https://bun.sh/).
 
 ```bash
+git clone https://github.com/henteko/binary-dungeon.git
+cd binary-dungeon
 bun install
-bun run dev
+bun run build:binary
+./bin/bd
 ```
 
 ## Controls
