@@ -13,13 +13,24 @@ import { InputHandler } from "./InputHandler.ts";
 import { DungeonView } from "./components/DungeonView.ts";
 import { getAvailableXp } from "../progression/XPManager.ts";
 import { TECH_STACK_INFO, getUpgradeCost } from "../progression/TechStack.ts";
-import { saveGame, loadGame, applySaveData } from "../save/SaveManager.ts";
+import {
+  type SaveData,
+  saveGameSlot,
+  loadGameSlot,
+  deleteSlot,
+  loadAllSlotPreviews,
+  applySaveData,
+  migrateOldSave,
+} from "../save/SaveManager.ts";
 
 export class App {
   private renderer: CliRenderer;
   private state: GameState;
   private inputHandler: InputHandler;
   private dungeonView: DungeonView;
+  private activeSlot: number = 1;
+  private deleteMode: boolean = false;
+  private slotPreviews: (SaveData | null)[] = [null, null, null];
 
   // UI elements
   private titleText!: TextRenderable;
@@ -40,17 +51,11 @@ export class App {
     this.inputHandler = new InputHandler();
     this.dungeonView = new DungeonView(renderer, DUNGEON_WIDTH, DUNGEON_HEIGHT);
 
-    // Load save data
-    const saveResult = loadGame();
-    if (saveResult) {
-      applySaveData(this.state, saveResult);
-      if (saveResult.tampered) {
-        addLog(this.state, "WARNING: Save data tampering detected!");
-        addLog(this.state, "Your title is now permanently 'Script Kiddie'.");
-      } else {
-        addLog(this.state, "Save data loaded.");
-      }
-    }
+    // Migrate old save.yaml to slot1.yaml if needed
+    migrateOldSave();
+
+    // Load slot previews for title screen
+    this.slotPreviews = loadAllSlotPreviews();
 
     this.inputHandler.setCallback((event: GameEvent) => {
       this.handleGameEvent(event);
@@ -117,7 +122,7 @@ export class App {
     // Title overlay (shown before game starts)
     this.titleOverlay = new TextRenderable(this.renderer, {
       id: "title-overlay",
-      content: "Press ENTER to start...",
+      content: "Select a save slot to start...",
       fg: COLORS.textSecondary,
     });
 
@@ -269,17 +274,49 @@ export class App {
   }
 
   private handleGameEvent(event: GameEvent): void {
+    // Handle slot selection and delete mode in title phase (before processTurn)
+    if (this.state.phase === "title") {
+      if (event.type === "toggle_delete_mode") {
+        this.deleteMode = !this.deleteMode;
+        this.updateUI();
+        return;
+      }
+      if (event.type === "select_slot") {
+        if (this.deleteMode) {
+          deleteSlot(event.slot);
+          this.slotPreviews = loadAllSlotPreviews();
+          this.deleteMode = false;
+          addLog(this.state, `Slot ${event.slot} deleted.`);
+          this.updateUI();
+          return;
+        }
+        this.activeSlot = event.slot;
+        const saveResult = loadGameSlot(event.slot);
+        if (saveResult) {
+          applySaveData(this.state, saveResult);
+          if (saveResult.tampered) {
+            addLog(this.state, "WARNING: Save data tampering detected!");
+            addLog(this.state, "Your title is now permanently 'Script Kiddie'.");
+          }
+        }
+        processTurn(this.state, { type: "start_game" });
+        this.inputHandler.setGamePhase(this.state.phase);
+        this.updateUI();
+        return;
+      }
+    }
+
     const prevPhase = this.state.phase;
     processTurn(this.state, event);
     this.inputHandler.setGamePhase(this.state.phase);
 
     // ゲームオーバー時: セーブ
     if (this.state.phase === "game_over" && prevPhase !== "game_over") {
-      saveGame(this.state);
+      saveGameSlot(this.state, this.activeSlot);
     }
 
     if (event.type === "invest_xp" || event.type === "finish_invest") {
-      saveGame(this.state);
+      saveGameSlot(this.state, this.activeSlot);
     }
 
     this.updateUI();
@@ -342,18 +379,34 @@ export class App {
         "",
         "             Debug bugs. Ship code. Don't burn out.",
         "",
-        "  Controls:",
-        "    WASD / hjkl / Arrows  - Move",
-        "    1: Debug  2: Hotfix   - Attack commands",
-        "    3: Google  4: Refactor - Support commands",
-        "    Space / .             - Wait a turn",
-        "    q                     - Quit",
+        "  ╔══════════════════════════════════════╗",
+        "  ║           SAVE SLOTS                 ║",
+        "  ╚══════════════════════════════════════╝",
         "",
-        "                  [ Press ENTER to start ]",
       ];
+
+      for (let i = 0; i < 3; i++) {
+        const preview = this.slotPreviews[i];
+        if (preview) {
+          const ts = preview.techStacks;
+          titleArt.push(
+            `  ${i + 1}: ${preview.title.padEnd(10)} | ${("v" + Math.floor((preview.highestMilestone - 1) / 3 + 1) + "." + ((preview.highestMilestone - 1) % 3) + ".0").padEnd(7)} | Py:${ts.python} C++:${ts.cpp} Rs:${ts.rust} Go:${ts.go}`
+          );
+        } else {
+          titleArt.push(`  ${i + 1}: --- Empty ---`);
+        }
+      }
+
+      titleArt.push("");
+      if (this.deleteMode) {
+        titleArt.push("  DELETE MODE: Press 1-3 to delete a slot, D to cancel");
+      } else {
+        titleArt.push("  1-3: Select slot  D: Delete slot  Q: Quit");
+      }
+
       this.titleOverlay.content = titleArt.join("\n");
       this.titleOverlay.visible = true;
-      this.titleOverlay.fg = COLORS.title;
+      this.titleOverlay.fg = this.deleteMode ? COLORS.burnout : COLORS.title;
       this.dungeonView.getRenderable().visible = false;
     } else if (this.state.phase === "game_over") {
       const gameOverArt = [

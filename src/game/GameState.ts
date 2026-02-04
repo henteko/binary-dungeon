@@ -17,7 +17,7 @@ export function createInitialGameState(): GameState {
     milestone: { version: "v1.0.0", floor: 1 },
     turnCount: 0,
     burnoutMode: false,
-    log: ["Welcome to BINARY DUNGEON.", "Press ENTER to start."],
+    log: ["Welcome to BINARY DUNGEON.", "Select a save slot to start."],
     techStacks: { python: 0, cpp: 0, rust: 0, go: 0 },
     totalXp: 0,
     title: "Junior",

@@ -35,9 +35,10 @@ export class InputHandler {
 
   private mapKeyToEvent(key: KeyEvent): GameEvent | null {
     if (this.gamePhase === "title") {
-      if (key.name === "return") {
-        return { type: "start_game" };
-      }
+      if (key.name === "1") return { type: "select_slot", slot: 1 };
+      if (key.name === "2") return { type: "select_slot", slot: 2 };
+      if (key.name === "3") return { type: "select_slot", slot: 3 };
+      if (key.name === "d") return { type: "toggle_delete_mode" };
       return null;
     }
 

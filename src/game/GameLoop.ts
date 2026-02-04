@@ -22,7 +22,9 @@ export type GameEvent =
   | { type: "next_milestone" }
   | { type: "invest_xp"; stack: import("./types.ts").TechStackType }
   | { type: "finish_invest" }
-  | { type: "new_game" };
+  | { type: "new_game" }
+  | { type: "select_slot"; slot: number }
+  | { type: "toggle_delete_mode" };
 
 export function processTurn(state: GameState, event: GameEvent): void {
   state.turnEvents = [];
