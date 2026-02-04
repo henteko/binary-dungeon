@@ -26,7 +26,8 @@ Download a prebuilt binary for your platform from [Releases](https://github.com/
 
 ```bash
 chmod +x bd-darwin-arm64
-./bd-darwin-arm64
+mv bd-darwin-arm64 bd
+./bd
 ```
 
 ### From source
