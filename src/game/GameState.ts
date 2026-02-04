@@ -22,6 +22,7 @@ export function createInitialGameState(): GameState {
     totalXp: 0,
     title: "Junior",
     scriptKiddie: false,
+    turnEvents: [],
   };
 }
 

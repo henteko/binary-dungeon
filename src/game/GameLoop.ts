@@ -25,6 +25,8 @@ export type GameEvent =
   | { type: "new_game" };
 
 export function processTurn(state: GameState, event: GameEvent): void {
+  state.turnEvents = [];
+
   if (state.phase === "title") {
     if (event.type === "start_game") {
       state.phase = "exploring";
@@ -54,6 +56,7 @@ export function processTurn(state: GameState, event: GameEvent): void {
 
   if (state.player.stunned) {
     state.player.stunned = false;
+    state.turnEvents.push({ kind: "stunned" });
     addLog(state, "You recover from the Hotfix cooldown.");
     processEnemyTurns(state);
     endOfTurn(state);
@@ -70,6 +73,7 @@ export function processTurn(state: GameState, event: GameEvent): void {
       acted = resolveAction(state, event.action);
       break;
     case "wait":
+      state.turnEvents.push({ kind: "wait" });
       addLog(state, "You wait...");
       acted = true;
       break;
@@ -109,6 +113,12 @@ function handleMove(state: GameState, direction: Position): boolean {
 
   state.player.position.x = newX;
   state.player.position.y = newY;
+
+  const dirLabel =
+    direction.x > 0 ? "east" :
+    direction.x < 0 ? "west" :
+    direction.y > 0 ? "south" : "north";
+  state.turnEvents.push({ kind: "move", direction: dirLabel });
 
   if (tile.type === "stairs") {
     const livingEnemies = state.enemies.filter((e) => e.hp > 0);
@@ -193,6 +203,7 @@ function endOfTurn(state: GameState): void {
   // Burnout damage
   if (state.burnoutMode) {
     state.player.mh = Math.max(0, state.player.mh - BURNOUT_DAMAGE_PER_TURN);
+    state.turnEvents.push({ kind: "burnout_tick", amount: BURNOUT_DAMAGE_PER_TURN });
     addLog(state, `Burnout! You take ${BURNOUT_DAMAGE_PER_TURN} stress damage.`);
   }
 

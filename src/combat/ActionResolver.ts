@@ -37,7 +37,10 @@ function damageEnemy(state: GameState, enemy: Enemy, damage: number): void {
   enemy.hp = Math.max(0, enemy.hp - damage);
   addLog(state, `Hit ${enemy.variant} for ${damage} damage!`);
 
-  if (enemy.hp <= 0) {
+  const killed = enemy.hp <= 0;
+  state.turnEvents.push({ kind: "damage_dealt", target: enemy.variant, amount: damage, killed });
+
+  if (killed) {
     addLog(state, `${enemy.variant} destroyed! +${enemy.xpReward} XP`);
     state.player.xp += enemy.xpReward;
     state.totalXp += enemy.xpReward;
@@ -72,6 +75,7 @@ function resolveDebug(state: GameState): boolean {
     return false;
   }
 
+  state.turnEvents.push({ kind: "action", label: "Debug" });
   state.player.mh -= cost;
   const damage = getDebugDamage(state);
   damageEnemy(state, target, damage);
@@ -91,6 +95,7 @@ function resolveHotfix(state: GameState): boolean {
     return false;
   }
 
+  state.turnEvents.push({ kind: "action", label: "Hotfix" });
   state.player.mh -= cost;
   const damage = getHotfixDamage(state);
   damageEnemy(state, target, damage);
@@ -106,6 +111,7 @@ function resolveGoogleIt(state: GameState): boolean {
     return false;
   }
 
+  state.turnEvents.push({ kind: "action", label: "Google It" });
   state.player.dl -= cost;
 
   // Reveal all tiles in the current room and show enemy info
@@ -146,12 +152,14 @@ function resolveRefactor(state: GameState): boolean {
     return false;
   }
 
+  state.turnEvents.push({ kind: "action", label: "Refactor" });
   state.player.dl -= cost;
   state.player.defending = true;
   state.player.defenseMultiplier = getRefactorDefense(state);
 
   const healAmount = getRefactorHeal();
   const healed = healMh(state.player, healAmount);
+  state.turnEvents.push({ kind: "heal", amount: healed });
 
   addLog(state, `Refactor: Defense up! Healed ${healed} MH.`);
   return true;

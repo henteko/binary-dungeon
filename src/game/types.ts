@@ -70,6 +70,16 @@ export type Milestone = {
 
 export type GamePhase = "title" | "exploring" | "combat" | "game_over" | "xp_invest";
 
+export type TurnEvent =
+  | { kind: "action"; label: string }
+  | { kind: "damage_dealt"; target: string; amount: number; killed: boolean }
+  | { kind: "damage_taken"; source: string; amount: number }
+  | { kind: "heal"; amount: number }
+  | { kind: "move"; direction: string }
+  | { kind: "wait" }
+  | { kind: "stunned" }
+  | { kind: "burnout_tick"; amount: number };
+
 export type GameState = {
   phase: GamePhase;
   player: Player;
@@ -83,4 +93,5 @@ export type GameState = {
   totalXp: number;
   title: string;
   scriptKiddie: boolean;
+  turnEvents: TurnEvent[];
 };

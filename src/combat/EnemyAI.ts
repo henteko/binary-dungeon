@@ -57,6 +57,7 @@ export function processEnemyTurns(state: GameState): void {
       // Attack player
       const damage = getEnemyAttackDamage(enemy, state.burnoutMode);
       const dealt = damageMh(state.player, damage);
+      state.turnEvents.push({ kind: "damage_taken", source: enemy.variant, amount: dealt });
       addLog(state, `${enemy.variant} attacks! -${dealt} MH`);
     } else {
       // Chase player

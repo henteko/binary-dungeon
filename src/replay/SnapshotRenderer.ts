@@ -75,6 +75,51 @@ function hLine(width: number): string {
   return BOX.h.repeat(width);
 }
 
+function formatTurnEvents(state: GameState): [string, string][] {
+  const events = state.turnEvents;
+  const lines: [string, string][] = [];
+
+  for (const ev of events) {
+    switch (ev.kind) {
+      case "action":
+        lines.push([`${BOLD}${fgCode(C.title)}`, `> ${ev.label}`]);
+        break;
+      case "damage_dealt":
+        lines.push([
+          `${fgCode(C.mhBar)}`,
+          ev.killed
+            ? `  -> ${ev.target} -${ev.amount} KILLED!`
+            : `  -> ${ev.target} -${ev.amount}`,
+        ]);
+        break;
+      case "damage_taken":
+        lines.push([`${fgCode(C.enemy)}`, `  <- ${ev.source} -${ev.amount} MH`]);
+        break;
+      case "heal":
+        lines.push([`${fgCode(C.mhBar)}`, `  +${ev.amount} MH healed`]);
+        break;
+      case "move":
+        lines.push([`${fgCode(C.text)}`, `> Move ${ev.direction}`]);
+        break;
+      case "wait":
+        lines.push([`${fgCode(C.muted)}`, `> Wait...`]);
+        break;
+      case "stunned":
+        lines.push([`${fgCode(C.dlBar)}`, `> Stunned (cooldown)`]);
+        break;
+      case "burnout_tick":
+        lines.push([`${fgCode(C.burnout)}`, `  BURNOUT -${ev.amount} MH`]);
+        break;
+    }
+  }
+
+  // Pad to exactly 3 lines for consistent layout
+  while (lines.length < 3) {
+    lines.push([`${fgCode(C.muted)}`, ""]);
+  }
+  return lines.slice(0, 3);
+}
+
 export function renderSnapshot(state: GameState): string {
   const { dungeon, player, enemies, milestone, turnCount, burnoutMode, log } = state;
   const bc = `${fgCode(C.border)}`; // border color
@@ -157,6 +202,9 @@ export function renderSnapshot(state: GameState): string {
   const dlBarStr = "|".repeat(dlFilled) + " ".repeat(dlBarLen - dlFilled);
   const dlColor = burnoutMode ? C.burnout : C.dlBar;
 
+  // Format turn events (up to 3 lines)
+  const eventLines = formatTurnEvents(state);
+
   const statusEntries: ([string, string] | null)[] = [
     [`${fgCode(C.text)}`, `Player: ${player.name}`],
     [`${fgCode(C.text)}`, `Rank:   ${title}${verified}`],
@@ -166,9 +214,11 @@ export function renderSnapshot(state: GameState): string {
     [`${fgCode(mhColor)}`, `MH: [${mhBarStr}] ${String(player.mh).padStart(3)}/${player.maxMh}`],
     [`${fgCode(dlColor)}`, `DL: [${dlBarStr}] ${String(player.dl).padStart(3)}/${player.maxDl}`],
     null,
-    [`${BOLD}${fgCode(C.textSec)}`, "[ ACTIONS ]"],
-    [`${fgCode(C.text)}`, "1:Debug   2:Hotfix"],
-    [`${fgCode(C.text)}`, "3:Google  4:Refactor"],
+    [`${BOLD}${fgCode(C.textSec)}`, "[ TECH STACKS ]"],
+    [`${fgCode(C.text)}`, `Py:${state.techStacks.python} C++:${state.techStacks.cpp} Rs:${state.techStacks.rust} Go:${state.techStacks.go}`],
+    null,
+    [`${BOLD}${fgCode(C.textSec)}`, "[ LAST ACTION ]"],
+    ...eventLines.map((line): [string, string] => [line[0], line[1]]),
     null,
     [`${fgCode(C.muted)}`, `Turn: ${turnCount}`],
   ];

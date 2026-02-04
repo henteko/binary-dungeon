@@ -32,6 +32,8 @@ export class App {
   private dlBarText!: TextRenderable;
   private logText!: TextRenderable;
   private turnText!: TextRenderable;
+  private techStackText!: TextRenderable;
+  private lastActionText!: TextRenderable;
   private dungeonPanel!: BoxRenderable;
   private titleOverlay!: TextRenderable;
 
@@ -177,6 +179,32 @@ export class App {
       fg: COLORS.textPrimary,
     });
 
+    const techStackLabel = new TextRenderable(this.renderer, {
+      id: "techstack-label",
+      content: "[ TECH STACKS ]",
+      fg: COLORS.textSecondary,
+      attributes: TextAttributes.BOLD,
+    });
+
+    this.techStackText = new TextRenderable(this.renderer, {
+      id: "techstack-text",
+      content: "",
+      fg: COLORS.textPrimary,
+    });
+
+    const lastActionLabel = new TextRenderable(this.renderer, {
+      id: "lastaction-label",
+      content: "[ LAST ACTION ]",
+      fg: COLORS.textSecondary,
+      attributes: TextAttributes.BOLD,
+    });
+
+    this.lastActionText = new TextRenderable(this.renderer, {
+      id: "lastaction-text",
+      content: "",
+      fg: COLORS.textPrimary,
+    });
+
     this.turnText = new TextRenderable(this.renderer, {
       id: "turn-text",
       content: "",
@@ -187,8 +215,12 @@ export class App {
     statusPanel.add(resourcesLabel);
     statusPanel.add(this.mhBarText);
     statusPanel.add(this.dlBarText);
+    statusPanel.add(techStackLabel);
+    statusPanel.add(this.techStackText);
     statusPanel.add(actionsLabel);
     statusPanel.add(actionsText);
+    statusPanel.add(lastActionLabel);
+    statusPanel.add(this.lastActionText);
     statusPanel.add(this.turnText);
 
     body.add(this.dungeonPanel);
@@ -311,6 +343,13 @@ export class App {
     this.dlBarText.content = `DL: [${dlBar}] ${player.dl}/${player.maxDl}`;
     this.dlBarText.fg = burnoutMode ? COLORS.burnout : COLORS.dlBar;
 
+    // Tech stacks
+    const ts = this.state.techStacks;
+    this.techStackText.content = `Py:${ts.python} C++:${ts.cpp} Rs:${ts.rust} Go:${ts.go}`;
+
+    // Last action (turn events)
+    this.lastActionText.content = formatTurnEventsForUI(this.state);
+
     // Turn counter
     this.turnText.content = `Turn: ${turnCount}`;
 
@@ -399,4 +438,37 @@ export class App {
   getState(): GameState {
     return this.state;
   }
+}
+
+function formatTurnEventsForUI(state: GameState): string {
+  const lines: string[] = [];
+  for (const ev of state.turnEvents) {
+    switch (ev.kind) {
+      case "action":
+        lines.push(`> ${ev.label}`);
+        break;
+      case "damage_dealt":
+        lines.push(ev.killed ? `  -> ${ev.target} -${ev.amount} KILLED!` : `  -> ${ev.target} -${ev.amount}`);
+        break;
+      case "damage_taken":
+        lines.push(`  <- ${ev.source} -${ev.amount} MH`);
+        break;
+      case "heal":
+        lines.push(`  +${ev.amount} MH healed`);
+        break;
+      case "move":
+        lines.push(`> Move ${ev.direction}`);
+        break;
+      case "wait":
+        lines.push(`> Wait...`);
+        break;
+      case "stunned":
+        lines.push(`> Stunned (cooldown)`);
+        break;
+      case "burnout_tick":
+        lines.push(`  BURNOUT -${ev.amount} MH`);
+        break;
+    }
+  }
+  return lines.slice(0, 3).join("\n");
 }
