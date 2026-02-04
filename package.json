@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "module": "src/index.ts",
   "type": "module",
-  "private": true,
+  "license": "MIT",
   "scripts": {
     "dev": "bun src/index.ts",
     "build": "vite build",
