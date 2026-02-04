@@ -13,6 +13,8 @@ Built for short play sessions in the terminal.
                            |___/                    |___/
 ```
 
+[![asciicast](https://asciinema.org/a/oTczopsD4Exje4pL.svg)](https://asciinema.org/a/oTczopsD4Exje4pL)
+
 ## Install
 
 Download a prebuilt binary for your platform from [Releases](https://github.com/henteko/binary-dungeon/releases).
