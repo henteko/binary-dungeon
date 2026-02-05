@@ -38,7 +38,19 @@ function extractSaveData(state: GameState): SaveData {
 }
 
 function canonicalize(data: SaveData): string {
-  return JSON.stringify(data, Object.keys(data).sort());
+  const sorted = {
+    highestMilestone: data.highestMilestone,
+    scriptKiddie: data.scriptKiddie,
+    techStacks: {
+      cpp: data.techStacks.cpp,
+      go: data.techStacks.go,
+      python: data.techStacks.python,
+      rust: data.techStacks.rust,
+    },
+    title: data.title,
+    totalXp: data.totalXp,
+  };
+  return JSON.stringify(sorted);
 }
 
 export function saveGame(state: GameState): void {
